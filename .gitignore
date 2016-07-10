@@ -1,0 +1,20 @@
+# idea
+.idea
+/out/
+.idea_modules/
+*.iml
+# scala
+*.class
+*.log
+.scala_dependencies
+.worksheet
+# sbt
+.cache
+.history
+.lib/
+dist/*
+target/
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
