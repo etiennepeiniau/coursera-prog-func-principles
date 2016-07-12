@@ -36,10 +36,10 @@ abstract class TweetSet {
    * This method takes a predicate and returns a subset of all the elements
    * in the original set for which the predicate is true.
    *
-   * Question: Can we implment this method here, or should it remain abstract
+   * Question: Can we implement this method here, or should it remain abstract
    * and be implemented in the subclasses?
    */
-  def filter(p: Tweet => Boolean): TweetSet = ???
+  def filter(p: Tweet => Boolean): TweetSet = this.filterAcc(p, new Empty)
 
   /**
    * This is a helper method for `filter` that propagetes the accumulated tweets.
@@ -49,10 +49,15 @@ abstract class TweetSet {
   /**
    * Returns a new `TweetSet` that is the union of `TweetSet`s `this` and `that`.
    *
-   * Question: Should we implment this method here, or should it remain abstract
+   * Question: Should we implement this method here, or should it remain abstract
    * and be implemented in the subclasses?
    */
-  def union(that: TweetSet): TweetSet = ???
+  def union(that: TweetSet): TweetSet = {
+    var acc: TweetSet = new Empty
+    this.foreach(tweet => acc = acc.incl(tweet))
+    that.foreach(tweet => acc = acc.incl(tweet))
+    acc
+  }
 
   /**
    * Returns the tweet from this set which has the greatest retweet count.
@@ -60,10 +65,10 @@ abstract class TweetSet {
    * Calling `mostRetweeted` on an empty set should throw an exception of
    * type `java.util.NoSuchElementException`.
    *
-   * Question: Should we implment this method here, or should it remain abstract
+   * Question: Should we implement this method here, or should it remain abstract
    * and be implemented in the subclasses?
    */
-  def mostRetweeted: Tweet = ???
+  def mostRetweeted: Tweet
 
   /**
    * Returns a list containing all tweets of this set, sorted by retweet count
@@ -71,10 +76,10 @@ abstract class TweetSet {
    * have the highest retweet count.
    *
    * Hint: the method `remove` on TweetSet will be very useful.
-   * Question: Should we implment this method here, or should it remain abstract
+   * Question: Should we implement this method here, or should it remain abstract
    * and be implemented in the subclasses?
    */
-  def descendingByRetweet: TweetList = ???
+  def descendingByRetweet: TweetList
 
   /**
    * The following methods are already implemented
@@ -105,7 +110,12 @@ abstract class TweetSet {
 }
 
 class Empty extends TweetSet {
-  def filterAcc(p: Tweet => Boolean, acc: TweetSet): TweetSet = ???
+
+  def filterAcc(p: Tweet => Boolean, acc: TweetSet): TweetSet = acc
+
+  def mostRetweeted: Tweet = throw new java.util.NoSuchElementException("mostRetweeted from Empty")
+
+  def descendingByRetweet: TweetList = Nil
 
   /**
    * The following methods are already implemented
@@ -122,8 +132,26 @@ class Empty extends TweetSet {
 
 class NonEmpty(elem: Tweet, left: TweetSet, right: TweetSet) extends TweetSet {
 
-  def filterAcc(p: Tweet => Boolean, acc: TweetSet): TweetSet = ???
+  def filterAcc(p: Tweet => Boolean, acc: TweetSet): TweetSet = {
+    var temp = acc
+    if (p(elem)) {
+      temp = acc.incl(elem)
+    }
+    temp = left.filterAcc(p, temp)
+    temp = right.filterAcc(p, temp)
+    temp
+  }
 
+  def mostRetweeted: Tweet = {
+    var mostRetweeted = elem
+    foreach((tweet) => if (tweet.retweets > mostRetweeted.retweets) mostRetweeted = tweet)
+    mostRetweeted
+  }
+
+  def descendingByRetweet: TweetList = {
+    val tweet = mostRetweeted
+    new Cons(tweet, this.remove(tweet).descendingByRetweet)
+  }
 
   /**
    * The following methods are already implemented
@@ -183,14 +211,18 @@ object GoogleVsApple {
   val google = List("android", "Android", "galaxy", "Galaxy", "nexus", "Nexus")
   val apple = List("ios", "iOS", "iphone", "iPhone", "ipad", "iPad")
 
-  lazy val googleTweets: TweetSet = ???
-  lazy val appleTweets: TweetSet = ???
+  def keyWordsFilter(list: List[String]): (Tweet) => Boolean = {
+    (tweet) => list.exists((s) => tweet.text.contains(s))
+  }
+
+  lazy val googleTweets: TweetSet = TweetReader.allTweets.filter(keyWordsFilter(google))
+  lazy val appleTweets: TweetSet = TweetReader.allTweets.filter(keyWordsFilter(apple))
 
   /**
    * A list of all tweets mentioning a keyword from either apple or google,
    * sorted by the number of retweets.
    */
-  lazy val trending: TweetList = ???
+  lazy val trending: TweetList = googleTweets.union(appleTweets).descendingByRetweet
 }
 
 object Main extends App {
